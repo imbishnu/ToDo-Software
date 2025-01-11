@@ -3,78 +3,144 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Todo List Application</title>
+    <title>Spreadsheet Application</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body {
-            background-color: #f8f9fa;
+            background-color: #f0f2f5;
             padding: 20px;
         }
-        .todo-container {
-            max-width: 700px;
+        .spreadsheet-container {
+            max-width: 900px;
             margin: 0 auto;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
             padding: 20px;
             border-radius: 8px;
             background-color: #fff;
         }
-        .todo-header {
+        .spreadsheet-header {
             text-align: center;
             margin-bottom: 20px;
         }
     </style>
 </head>
 <body>
-    <div class="container todo-container">
-        <h1 class="todo-header">To-Do List</h1>
-        <form id="todoForm" class="mb-4">
-            <div class="input-group">
-                <input type="text" id="taskInput" class="form-control" placeholder="Enter your task..." required>
-                <button type="submit" class="btn btn-primary">Add Task</button>
+    <div class="container spreadsheet-container">
+        <h1 class="spreadsheet-header">Income & Expenses Tracker</h1>
+        <form id="entryForm" class="mb-4">
+            <div class="row g-2">
+                <div class="col-md-4">
+                    <input type="text" id="descriptionInput" class="form-control" placeholder="Description" required>
+                </div>
+                <div class="col-md-4">
+                    <input type="number" id="amountInput" class="form-control" placeholder="Amount" required>
+                </div>
+                <div class="col-md-4">
+                    <select id="typeInput" class="form-select" required>
+                        <option value="">Select Type</option>
+                        <option value="Income">Income</option>
+                        <option value="Expense">Expense</option>
+                    </select>
+                </div>
             </div>
+            <button type="submit" class="btn btn-primary mt-3">Add Entry</button>
         </form>
-        <h3>Tasks</h3>
-        <ul id="taskList" class="list-group mb-4"></ul>
-        <h3>Completed Tasks</h3>
-        <ul id="completedTaskList" class="list-group"></ul>
+
+        <h3>Entries</h3>
+        <table class="table table-bordered table-striped">
+            <thead class="table-dark">
+                <tr>
+                    <th>Description</th>
+                    <th>Amount</th>
+                    <th>Type</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="entriesTable">
+            </tbody>
+        </table>
+
+        <div class="mt-4">
+            <h4>Total Income: <span id="totalIncome">0</span></h4>
+            <h4>Total Expenses: <span id="totalExpenses">0</span></h4>
+            <h4>Remaining Amount: <span id="remainingAmount">0</span></h4>
+        </div>
     </div>
 
     <script>
-        document.getElementById('todoForm').addEventListener('submit', function(event) {
-            event.preventDefault();
-            const taskInput = document.getElementById('taskInput');
-            const taskText = taskInput.value.trim();
+        const entriesTable = document.getElementById('entriesTable');
+        const totalIncomeElement = document.getElementById('totalIncome');
+        const totalExpensesElement = document.getElementById('totalExpenses');
+        const remainingAmountElement = document.getElementById('remainingAmount');
 
-            if (taskText !== '') {
-                addTask(taskText);
-                taskInput.value = '';
+        let totalIncome = 0;
+        let totalExpenses = 0;
+
+        document.getElementById('entryForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const description = document.getElementById('descriptionInput').value.trim();
+            const amount = parseFloat(document.getElementById('amountInput').value.trim());
+            const type = document.getElementById('typeInput').value;
+
+            if (description && !isNaN(amount) && type) {
+                addEntry(description, amount, type);
+                calculateTotals();
+                this.reset();
             }
         });
 
-        function addTask(task) {
-            const taskList = document.getElementById('taskList');
-            const listItem = document.createElement('li');
-            listItem.className = 'list-group-item d-flex justify-content-between align-items-center';
-            listItem.innerHTML = `
-                <span>${task}</span>
-                <div>
-                    <button class="btn btn-success btn-sm me-2" onclick="completeTask(this)">Complete</button>
-                    <button class="btn btn-danger btn-sm" onclick="deleteTask(this)">Delete</button>
-                </div>
+        function addEntry(description, amount, type) {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${description}</td>
+                <td>${amount.toFixed(2)}</td>
+                <td>${type}</td>
+                <td>
+                    <button class="btn btn-success btn-sm me-2" onclick="editEntry(this)">Edit</button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteEntry(this)">Delete</button>
+                </td>
             `;
-            taskList.appendChild(listItem);
+            entriesTable.appendChild(row);
         }
 
-        function completeTask(button) {
-            const listItem = button.parentElement.parentElement;
-            const completedTaskList = document.getElementById('completedTaskList');
-            button.remove(); // Remove complete button after marking task as complete
-            completedTaskList.appendChild(listItem);
+        function editEntry(button) {
+            const row = button.parentElement.parentElement;
+            const description = row.cells[0].innerText;
+            const amount = row.cells[1].innerText;
+            const type = row.cells[2].innerText;
+
+            document.getElementById('descriptionInput').value = description;
+            document.getElementById('amountInput').value = parseFloat(amount);
+            document.getElementById('typeInput').value = type;
+
+            row.remove();
+            calculateTotals();
         }
 
-        function deleteTask(button) {
-            const listItem = button.parentElement.parentElement;
-            listItem.remove();
+        function deleteEntry(button) {
+            button.parentElement.parentElement.remove();
+            calculateTotals();
+        }
+
+        function calculateTotals() {
+            totalIncome = 0;
+            totalExpenses = 0;
+
+            Array.from(entriesTable.rows).forEach(row => {
+                const amount = parseFloat(row.cells[1].innerText);
+                const type = row.cells[2].innerText;
+
+                if (type === 'Income') {
+                    totalIncome += amount;
+                } else if (type === 'Expense') {
+                    totalExpenses += amount;
+                }
+            });
+
+            const remainingAmount = totalIncome - totalExpenses;
+            totalIncomeElement.textContent = totalIncome.toFixed(2);
+            totalExpensesElement.textContent = totalExpenses.toFixed(2);
+            remainingAmountElement.textContent = remainingAmount.toFixed(2);
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
